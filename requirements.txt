@@ -1,0 +1,4 @@
+kafka-python
+faust-streaming
+aiohttp
+psycopg2-binary
