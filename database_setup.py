@@ -26,29 +26,43 @@ exists = cur.fetchone()
 if not exists:
     cur.execute('CREATE DATABASE pdc')
     print("Database `pdc` created successfully.")
-    # Create the `stock` table if it doesn't exist
-    create_table_query = sql.SQL("""
-        CREATE TABLE IF NOT EXISTS stock (
-            id SERIAL PRIMARY KEY,
-            event_time TIMESTAMPTZ NOT NULL,
-            symbol VARCHAR(15) NOT NULL,
-            price DOUBLE PRECISION NOT NULL
-        )
-    """)
-
-    cur.execute(create_table_query)
-
-    # Commit the transaction
-    conn.commit()
-
-    # Close the cursor and connection
-    cur.close()
-    conn.close()
-
-
-    print("Table `stock` created successfully.")
-
 else:
     print("Database `pdc` already exists.")
+
+
+# Create the `stock` table if it doesn't exist
+create_table_stock_query = sql.SQL("""
+    CREATE TABLE IF NOT EXISTS stock (
+        id SERIAL PRIMARY KEY,
+        event_time TIMESTAMPTZ NOT NULL,
+        symbol VARCHAR(15) NOT NULL,
+        price DOUBLE PRECISION NOT NULL
+    )
+""")
+create_table_aggregated_stock_query = sql.SQL("""
+    CREATE TABLE IF NOT EXISTS aggregated_stock (
+        id SERIAL PRIMARY KEY,
+        event_time TIMESTAMPTZ NOT NULL,
+        symbol VARCHAR(15) NOT NULL,
+        min DOUBLE PRECISION NOT NULL,
+        max DOUBLE PRECISION NOT NULL,
+        avg DOUBLE PRECISION NOT NULL,
+        count INTEGER NOT NULL
+    )
+""")
+cur.execute(create_table_stock_query)
+cur.execute(create_table_aggregated_stock_query)
+
+
+# Commit the transaction
+conn.commit()
+# Close the cursor and connection
+cur.close()
+conn.close()
+
+print("Tables `stock` and `aggregated_stock` created if they didn't exist.")
+
+
+
 
 
