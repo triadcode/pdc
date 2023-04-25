@@ -3,27 +3,15 @@ from datetime import datetime
 from psycopg2 import sql, extensions, connect
 from shared import settings
 from shared.stock_variation import StockVariation
+import atexit
+import sys
+
 
 insert_query = sql.SQL("INSERT INTO aggregated_stock (event_time, symbol, min, max, avg, count) VALUES (%s, %s, %s, %s, %s, %s)")
 
-
-# Connect to the PostgreSQL server with the maintenance database
-conn = connect(
-    dbname='postgres',
-    user=settings.DB_USER,
-    password=settings.DB_PASSWORD,
-    host=settings.DB_HOST,
-    port=settings.DB_PORT
-)
-
-conn.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-
-# Create a new cursor
-cur = conn.cursor()
-
-
-cur.execute(f"SET TIME ZONE '{settings.timezone}';")
-
+def close_db_connection():
+    cur.close()
+    conn.close()
 
 
 # Define the Faust application
@@ -75,17 +63,44 @@ async def process_buckets():
             max_value = max(values) if count > 0 else None
 
             print(f"Time: {bucket_time}, Symbol: {symbol}, Min Price: {min_value}, Max Price: {max_value}, Avg Price: {avg}, Count: {count} ")
-            cur.execute(insert_query, (bucket_time, symbol,  min_value, max_value, avg, count))
-            conn.commit()
+            try:
+                cur.execute(insert_query, (bucket_time, symbol,  min_value, max_value, avg, count))
+                conn.commit()
+            except Exception as err:
+                print (f"An exception has occured while writing on the database {err = }")
+                close_db_connection()
+                sys.exit(1)
+
+
 
     # Clear the key_stats for the next cycle
     key_stats.clear()
 
 
-
 # Run the Faust application
 if __name__ == '__main__':
-    #app.add_task(generate_random_messages())
+    try:
+        # Connect to the PostgreSQL server and initialize session
+        conn = connect(
+            dbname='postgres',
+            user=settings.DB_USER,
+            password=settings.DB_PASSWORD,
+            host=settings.DB_HOST,
+            port=settings.DB_PORT
+        )
+
+        conn.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+        # Create a new cursor
+        cur = conn.cursor()
+        cur.execute(f"SET TIME ZONE '{settings.timezone}';")
+
+    except Exception as err:
+        print (f"An exception has occured during session initialization: {err =}")
+        close_db_connection()
+        sys.exit(1)
+
+    atexit.register(close_db_connection)
     app.main()
     # worker = faust.Worker(app)
     # worker.execute_from_commandline()
