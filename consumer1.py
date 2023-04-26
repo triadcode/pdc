@@ -1,5 +1,4 @@
 import faust
-from datetime import datetime, timezone
 from psycopg2 import sql, extensions, connect
 from shared import settings
 from shared.stock_variation import StockVariation
@@ -24,8 +23,6 @@ topic = app.topic(settings.topic_name, value_type=StockVariation)
 @app.agent(topic)
 async def process_message(variations):
     async for variation in variations:
-        #dt = datetime.fromisoformat(variation.timestamp.strip()) #datetime.strptime(variation.timestamp, "%Y-%m-%d %H:%M:%S%z").replace(tzinfo=settings.timezone)
-        #dt = dateutil.parser.parse(variation.timestamp)
         print(f'Variation received at {variation.timestamp} for {variation.symbol} with price {variation.price}')
         cur.execute(insert_query, (variation.timestamp, variation.symbol,  variation.price))
         conn.commit()
